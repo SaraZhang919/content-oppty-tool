@@ -231,6 +231,114 @@
   .status p { display: inline; }
 
   footer { margin-top: 64px; text-align: center; font-size: 11px; color: var(--muted); letter-spacing: .05em; }
+
+  /* ── Guide card ── */
+  .guide-card {
+    background: rgba(0,212,160,.05);
+    border: 1px solid rgba(0,212,160,.15);
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+    overflow: hidden;
+    animation: slideUp .5s cubic-bezier(.22,1,.36,1) both;
+  }
+  .guide-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 20px; cursor: pointer;
+    user-select: none;
+    transition: background .2s;
+  }
+  .guide-header:hover { background: rgba(0,212,160,.06); }
+  .guide-icon { font-size: 16px; }
+  .guide-title { flex: 1; font-size: 12px; letter-spacing: .04em; color: var(--accent); font-family: 'Syne', sans-serif; font-weight: 600; }
+  .guide-chevron { font-size: 10px; color: var(--accent); transition: transform .25s; }
+  .guide-chevron.open { transform: rotate(180deg); }
+
+  .guide-body { padding: 0 20px 18px; display: none; }
+  .guide-body.open { display: block; }
+
+  .guide-steps { padding-left: 18px; margin-bottom: 14px; }
+  .guide-steps li { font-size: 12px; color: var(--text-dim); margin-bottom: 7px; line-height: 1.6; }
+  .guide-steps li strong { color: var(--text); }
+
+  .guide-note {
+    background: rgba(255,255,255,.04);
+    border-left: 2px solid var(--accent);
+    border-radius: 4px;
+    padding: 10px 14px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .note-tag {
+    background: var(--accent); color: #000;
+    font-size: 9px; font-weight: 700; letter-spacing: .08em;
+    padding: 2px 6px; border-radius: 3px; margin-right: 8px;
+    font-family: 'Syne', sans-serif;
+  }
+
+  /* ── SEMrush section ── */
+  .semrush-section { margin-bottom: 8px; }
+  .field-hint { font-size: 11px; color: var(--text-dim); margin-bottom: 8px; line-height: 1.5; }
+  .optional-tag {
+    font-size: 9px; letter-spacing: .08em; text-transform: uppercase;
+    background: rgba(0,212,160,.15); color: var(--accent);
+    padding: 2px 7px; border-radius: 20px; margin-left: 6px;
+    font-family: 'Syne', sans-serif;
+  }
+
+  .extract-btn {
+    margin-top: 10px;
+    background: rgba(0,212,160,.12);
+    border: 1px solid rgba(0,212,160,.3);
+    border-radius: 7px;
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    padding: 9px 18px;
+    cursor: pointer;
+    transition: background .2s, transform .15s;
+  }
+  .extract-btn:hover { background: rgba(0,212,160,.2); transform: translateY(-1px); }
+  .extract-btn.secondary { background: rgba(255,255,255,.05); border-color: var(--border); color: var(--text-dim); }
+  .extract-btn.secondary:hover { background: rgba(255,255,255,.09); color: var(--text); }
+
+  /* ── URL pills ── */
+  .url-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+
+  .url-pill {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    max-width: 100%;
+    word-break: break-all;
+    line-height: 1.4;
+  }
+  .url-pill:hover { border-color: var(--accent); }
+  .url-pill.selected { border-color: var(--accent); background: rgba(0,212,160,.08); color: var(--text); }
+  .url-pill.excluded { opacity: .4; text-decoration: line-through; cursor: not-allowed; }
+
+  .pill-rank {
+    flex-shrink: 0;
+    font-size: 10px; font-weight: 700;
+    width: 20px; height: 20px;
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .pill-rank.seo   { background: rgba(0,102,255,.2); color: #6699ff; }
+  .pill-rank.freq  { background: rgba(0,212,160,.2); color: var(--accent); }
+  .pill-rank.skip  { background: rgba(252,73,73,.15); color: var(--danger); }
+
+  .pill-url { flex: 1; color: var(--text-dim); }
+  .url-pill.selected .pill-url { color: var(--text); }
+
+  .pill-legend { font-size: 11px; color: var(--text-dim); margin-right: 14px; }
+  .pill-legend.seo  { color: #6699ff; }
+  .pill-legend.freq { color: var(--accent); }
+  .pill-legend.skip { color: var(--muted); }
 </style>
 </head>
 <body>
@@ -287,12 +395,60 @@
       <p class="subtitle">Paste competitor URLs, confirm the intent &amp; page type, and we'll deliver a full strategic blueprint to your inbox.</p>
     </header>
 
+    <!-- SEMrush Guide -->
+    <div class="guide-card">
+      <div class="guide-header" onclick="toggleGuide()">
+        <span class="guide-icon">📋</span>
+        <span class="guide-title">How to get URLs from SEMrush</span>
+        <span class="guide-chevron" id="guideChevron">▼</span>
+      </div>
+      <div class="guide-body" id="guideBody">
+        <ol class="guide-steps">
+          <li>In SEMrush, search your target keyword → go to <strong>Keyword Overview</strong></li>
+          <li>Scroll to <strong>SERP Analysis</strong> → click <strong>View full SERP</strong></li>
+          <li>Click <strong>Export</strong> (top right) → download as <strong>CSV or XLSX</strong></li>
+          <li>Open the file — copy the <strong>top 10 URLs</strong> from the URL column</li>
+          <li>Paste them below — or use the smart selector to filter automatically ↓</li>
+        </ol>
+        <div class="guide-note">
+          <span class="note-tag">TIP</span>
+          Skip rows labelled <em>AI Overview</em>, <em>People Also Ask</em>, or <em>Featured Snippet</em> — paste only regular organic URLs. The smart selector below handles this for you.
+        </div>
+      </div>
+    </div>
+
     <div class="card">
 
+      <!-- Smart URL Selector -->
+      <div class="semrush-section">
+        <div class="section-label">Paste SEMrush export data <span class="optional-tag">smart import</span></div>
+        <p class="field-hint">Paste the raw rows from your SEMrush CSV/XLSX export (include the URL and Position columns). The tool will extract, filter, and score URLs automatically.</p>
+        <textarea id="semrushRaw"
+          placeholder="Paste SEMrush rows here, e.g.:&#10;1  https://example.com/article  informational  blog&#10;2  https://tool.com/free-tool  commercial  tool&#10;...&#10;&#10;Or skip this and paste URLs directly below."
+          spellcheck="false" style="min-height:100px;"></textarea>
+        <button class="extract-btn" onclick="extractFromSemrush()">⚡ Extract &amp; Smart-Select URLs</button>
+
+        <!-- Extracted URL pills -->
+        <div id="extractedArea" style="display:none;">
+          <div class="section-label" style="margin-top:16px;">Extracted URLs <span id="extractedCount" class="optional-tag"></span> — select up to 11</div>
+          <p class="field-hint">
+            <span class="pill-legend seo">● SEO rank</span>
+            <span class="pill-legend freq">● High frequency</span>
+            <span class="pill-legend skip">● AI Overview / PAA / Ads — excluded by default</span>
+          </p>
+          <div id="urlPills" class="url-pills"></div>
+          <button class="extract-btn secondary" onclick="applySelected()" style="margin-top:12px;">✓ Use selected URLs</button>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Manual URL paste -->
       <div class="url-area">
-        <div class="section-label">Competitor URLs</div>
+        <div class="section-label">Competitor URLs <span class="optional-tag">max 11</span></div>
+        <p class="field-hint">One URL per line. Paste directly or use the smart import above.</p>
         <textarea id="urls"
-          placeholder="https://competitor-one.com/article&#10;https://competitor-two.com/guide&#10;https://competitor-three.com/review&#10;&#10;One URL per line."
+          placeholder="https://competitor-one.com/article&#10;https://competitor-two.com/guide&#10;https://competitor-three.com/review"
           spellcheck="false"></textarea>
         <span class="url-count" id="urlCount">0 URLs</span>
       </div>
@@ -317,6 +473,7 @@
             <option value="landing_page">Landing Page</option>
             <option value="tutorial">Tutorial / How-to</option>
             <option value="product_page">Product Page</option>
+            <option value="online_tool">Online Tool</option>
           </select>
         </div>
       </div>
@@ -346,7 +503,7 @@
 // ══════════════════════════════════════════════════
 
 // Your n8n Webhook URL
-const N8N_WEBHOOK_URL = 'YOUR_N8N_WEBHOOK_URL_HERE';
+const N8N_WEBHOOK_URL = 'https://tizianazhang.app.n8n.cloud/webhook-test/content_oppty';
 
 // Shared team password shown on the lock screen
 // Change this to any string you like, e.g. 'vidnoz-seo-2025'
@@ -475,8 +632,171 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // ══════════════════════════════════════════════════
-//  MAIN FORM
+//  GUIDE TOGGLE
 // ══════════════════════════════════════════════════
+function toggleGuide() {
+  const body    = document.getElementById('guideBody');
+  const chevron = document.getElementById('guideChevron');
+  body.classList.toggle('open');
+  chevron.classList.toggle('open');
+}
+
+// ══════════════════════════════════════════════════
+//  SEMRUSH SMART EXTRACTOR
+// ══════════════════════════════════════════════════
+
+// Patterns that indicate non-organic SERP features to skip by default
+const SKIP_PATTERNS = [
+  /ai overview/i, /people also ask/i, /featured snippet/i,
+  /shopping/i, /ads/i, /advertisement/i, /local pack/i,
+  /video carousel/i, /image pack/i, /knowledge/i
+];
+
+// Domains that appear frequently across many keywords (high-freq signal)
+const HIGH_FREQ_DOMAINS = [
+  'wikipedia.org','youtube.com','reddit.com','quora.com',
+  'amazon.com','forbes.com','healthline.com','nerdwallet.com'
+];
+
+let extractedUrls = []; // [{url, rank, type, selected}]
+
+function extractFromSemrush() {
+  const raw = document.getElementById('semrushRaw').value.trim();
+  if (!raw) return;
+
+  const lines = raw.split(/\r?\n/).filter(l => l.trim());
+  const found = [];
+  const urlFreqMap = {};
+
+  // Pass 1: find all URLs and their ranks
+  for (const line of lines) {
+    // Try to find a URL pattern in the line
+    const urlMatch = line.match(/https?:\/\/[^\s,\t"']+/);
+    if (!urlMatch) continue;
+
+    const url  = urlMatch[0].replace(/[.,;]+$/, '');
+    const rank = extractRank(line);
+    const isSkip = SKIP_PATTERNS.some(p => p.test(line));
+    const isHighFreq = HIGH_FREQ_DOMAINS.some(d => url.includes(d));
+
+    // Count domain frequency
+    try {
+      const domain = new URL(url).hostname;
+      urlFreqMap[domain] = (urlFreqMap[domain] || 0) + 1;
+    } catch {}
+
+    found.push({ url, rank, isSkip, isHighFreq, line });
+  }
+
+  if (found.length === 0) {
+    alert('No URLs found. Make sure you paste rows that contain full URLs starting with https://');
+    return;
+  }
+
+  // Pass 2: score and classify
+  const domainCount = {};
+  found.forEach(({ url }) => {
+    try { const d = new URL(url).hostname; domainCount[d] = (domainCount[d]||0)+1; } catch {}
+  });
+
+  extractedUrls = found.slice(0, 20).map(item => {
+    let domain = '';
+    try { domain = new URL(item.url).hostname; } catch {}
+
+    const isFreqDomain = (domainCount[domain] || 0) > 1 || item.isHighFreq;
+    const type = item.isSkip ? 'skip' : (isFreqDomain ? 'freq' : 'seo');
+
+    // Auto-select: top 10 organic (non-skip), prefer SEO rank first, then freq
+    const autoSelect = !item.isSkip && item.rank <= 10;
+
+    return { url: item.url, rank: item.rank, type, selected: autoSelect };
+  });
+
+  // Trim auto-selection to max 11
+  let selectedCount = 0;
+  extractedUrls = extractedUrls.map(item => {
+    if (item.selected) {
+      if (selectedCount < 11) { selectedCount++; return item; }
+      else return { ...item, selected: false };
+    }
+    return item;
+  });
+
+  renderPills();
+  document.getElementById('extractedArea').style.display = 'block';
+  document.getElementById('extractedCount').textContent  = `${extractedUrls.length} found`;
+}
+
+function extractRank(line) {
+  // Try first token if it's a number
+  const m = line.match(/^\s*(\d+)/);
+  return m ? parseInt(m[1]) : 99;
+}
+
+function renderPills() {
+  const container = document.getElementById('urlPills');
+  container.innerHTML = '';
+
+  const selectedCount = extractedUrls.filter(u => u.selected).length;
+
+  extractedUrls.forEach((item, i) => {
+    const pill = document.createElement('div');
+    pill.className = `url-pill ${item.type === 'skip' ? 'excluded' : (item.selected ? 'selected' : '')}`;
+
+    const rankBadge = document.createElement('span');
+    rankBadge.className = `pill-rank ${item.type}`;
+    rankBadge.textContent = item.rank <= 50 ? item.rank : '—';
+
+    const urlSpan = document.createElement('span');
+    urlSpan.className = 'pill-url';
+    try {
+      const u = new URL(item.url);
+      urlSpan.textContent = u.hostname + (u.pathname.length > 1 ? u.pathname.substring(0,30) + (u.pathname.length > 30 ? '…' : '') : '');
+    } catch { urlSpan.textContent = item.url.substring(0, 50); }
+    urlSpan.title = item.url;
+
+    pill.appendChild(rankBadge);
+    pill.appendChild(urlSpan);
+
+    if (item.type !== 'skip') {
+      pill.onclick = () => togglePill(i);
+    }
+
+    container.appendChild(pill);
+  });
+}
+
+function togglePill(index) {
+  const item = extractedUrls[index];
+  if (item.type === 'skip') return;
+
+  const currentSelected = extractedUrls.filter(u => u.selected).length;
+
+  if (item.selected) {
+    extractedUrls[index].selected = false;
+  } else {
+    if (currentSelected >= 11) {
+      alert('Maximum 11 URLs allowed. Deselect one first.');
+      return;
+    }
+    extractedUrls[index].selected = true;
+  }
+  renderPills();
+}
+
+function applySelected() {
+  const selected = extractedUrls.filter(u => u.selected).map(u => u.url);
+  if (selected.length === 0) { alert('Please select at least one URL.'); return; }
+
+  document.getElementById('urls').value = selected.join('\n');
+  const n = selected.length;
+  document.getElementById('urlCount').textContent = `${n} URL${n !== 1 ? 's' : ''}`;
+
+  // Smooth scroll to the URL textarea
+  document.getElementById('urls').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+
 document.getElementById('urls').addEventListener('input', () => {
   const n = document.getElementById('urls').value
     .split(/[\n\r,\s]+/).map(s => s.trim())
