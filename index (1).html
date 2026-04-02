@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Content Opportunity Analyser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0b0e14;
+    --surface:   #13181f;
+    --border:    #1e2530;
+    --accent:    #00d4a0;
+    --accent2:   #0066ff;
+    --muted:     #4a5568;
+    --text:      #e2e8f0;
+    --text-dim:  #718096;
+    --danger:    #fc4949;
+    --radius:    12px;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,160,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,160,.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .blob { position: fixed; border-radius: 50%; filter: blur(120px); opacity: .18; pointer-events: none; z-index: 0; }
+  .blob-1 { width: 600px; height: 600px; top: -200px; left: -150px; background: var(--accent); }
+  .blob-2 { width: 500px; height: 500px; bottom: -100px; right: -100px; background: var(--accent2); }
+
+  /* ── LOCK SCREEN ── */
+  #lockScreen {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg);
+    transition: opacity .4s ease, visibility .4s ease;
+  }
+  #lockScreen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+  .lock-card {
+    width: 100%; max-width: 380px;
+    padding: 40px 36px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    animation: slideUp .5s cubic-bezier(.22,1,.36,1) both;
+  }
+
+  .lock-icon { font-size: 28px; margin-bottom: 20px; display: block; }
+  .lock-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 6px; }
+  .lock-sub { font-size: 12px; color: var(--text-dim); margin-bottom: 28px; }
+  .lock-label { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; display: block; }
+
+  .pw-wrap { position: relative; margin-bottom: 12px; }
+  .pw-wrap input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-family: 'DM Mono', monospace;
+    font-size: 14px; padding: 12px 44px 12px 14px; outline: none;
+    transition: border-color .2s; letter-spacing: .06em;
+  }
+  .pw-wrap input:focus { border-color: var(--accent); }
+  .pw-wrap input.shake { animation: shake .4s ease; border-color: var(--danger) !important; }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%      { transform: translateX(-8px); }
+    40%      { transform: translateX(8px); }
+    60%      { transform: translateX(-5px); }
+    80%      { transform: translateX(5px); }
+  }
+
+  .eye-btn {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; color: var(--muted);
+    padding: 4px; display: flex; transition: color .2s;
+  }
+  .eye-btn:hover { color: var(--text); }
+
+  .lock-error { font-size: 12px; color: var(--danger); margin-bottom: 14px; min-height: 18px; }
+
+  .attempts-bar { display: flex; gap: 5px; margin-bottom: 20px; }
+  .attempt-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); transition: background .3s; }
+  .attempt-dot.used { background: var(--danger); }
+
+  .lock-btn {
+    width: 100%; background: var(--accent); color: #000;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px;
+    border: none; border-radius: 8px; padding: 13px; cursor: pointer;
+    transition: opacity .2s, transform .15s; letter-spacing: .02em;
+  }
+  .lock-btn:hover { opacity: .9; transform: translateY(-1px); }
+  .lock-btn:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+  .lock-btn.cooldown { background: var(--muted); color: var(--text-dim); }
+  .lock-hint { margin-top: 20px; font-size: 11px; color: var(--muted); text-align: center; }
+
+  /* ── TOP BAR ── */
+  .topbar { position: fixed; top: 20px; right: 24px; z-index: 50; display: none; }
+  .topbar.visible { display: flex; align-items: center; gap: 12px; }
+  .session-badge { font-size: 11px; color: var(--muted); letter-spacing: .04em; }
+  .session-badge span { color: var(--accent); }
+  .logout-btn {
+    background: none; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-dim); font-family: 'DM Mono', monospace; font-size: 11px;
+    padding: 5px 12px; cursor: pointer; transition: border-color .2s, color .2s;
+  }
+  .logout-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* ── MAIN APP ── */
+  #app { opacity: 0; pointer-events: none; transition: opacity .5s ease .1s; }
+  #app.visible { opacity: 1; pointer-events: auto; }
+
+  .wrapper { position: relative; z-index: 1; max-width: 760px; margin: 0 auto; padding: 60px 24px 100px; }
+
+  header { margin-bottom: 56px; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 16px;
+  }
+  .eyebrow::before { content: ''; display: block; width: 24px; height: 1px; background: var(--accent); }
+
+  h1 {
+    font-family: 'Syne', sans-serif; font-size: clamp(32px, 6vw, 52px);
+    font-weight: 800; line-height: 1.05; letter-spacing: -.02em; color: #fff; margin-bottom: 16px;
+  }
+  h1 span {
+    background: linear-gradient(120deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .subtitle { color: var(--text-dim); max-width: 480px; font-size: 13px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 32px;
+    animation: slideUp .5s cubic-bezier(.22,1,.36,1) both;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .section-label { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .url-area { position: relative; margin-bottom: 24px; }
+
+  textarea {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-family: 'DM Mono', monospace;
+    font-size: 13px; line-height: 1.7; padding: 16px; resize: vertical;
+    min-height: 148px; outline: none; transition: border-color .2s;
+  }
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--muted); }
+
+  .url-count { position: absolute; bottom: 12px; right: 12px; font-size: 11px; color: var(--muted); pointer-events: none; }
+
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+  @media (max-width: 480px) { .row2 { grid-template-columns: 1fr; } }
+  .field { display: flex; flex-direction: column; gap: 8px; }
+
+  select {
+    appearance: none; -webkit-appearance: none;
+    background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%234a5568' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 14px center;
+    border: 1px solid var(--border); border-radius: 8px; color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 13px; padding: 11px 40px 11px 14px;
+    cursor: pointer; outline: none; transition: border-color .2s;
+  }
+  select:focus { border-color: var(--accent); }
+  select option { background: #1a202c; }
+
+  .email-row { margin-bottom: 28px; }
+  input[type="email"] {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-family: 'DM Mono', monospace;
+    font-size: 13px; padding: 11px 14px; outline: none; transition: border-color .2s;
+  }
+  input[type="email"]:focus { border-color: var(--accent); }
+  input[type="email"]::placeholder { color: var(--muted); }
+
+  .divider { height: 1px; background: var(--border); margin: 28px 0; }
+
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; background: var(--accent); color: #000;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px;
+    letter-spacing: .02em; border: none; border-radius: 8px; padding: 16px 24px;
+    cursor: pointer; transition: opacity .2s, transform .15s; position: relative; overflow: hidden;
+  }
+  .btn::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,.15) 50%, transparent 100%);
+    transform: translateX(-100%); transition: transform .4s;
+  }
+  .btn:hover::before { transform: translateX(100%); }
+  .btn:hover { opacity: .9; transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+  .spinner {
+    width: 18px; height: 18px; border: 2px solid rgba(0,0,0,.2);
+    border-top-color: #000; border-radius: 50%;
+    animation: spin .7s linear infinite; display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .status { display: none; margin-top: 20px; padding: 16px 20px; border-radius: 8px; font-size: 13px; animation: slideUp .3s ease both; }
+  .status.success { background: rgba(0,212,160,.1); border: 1px solid rgba(0,212,160,.3); color: var(--accent); }
+  .status.error   { background: rgba(252,73,73,.1);  border: 1px solid rgba(252,73,73,.3);  color: var(--danger); }
+  .status .status-icon { font-size: 18px; margin-right: 8px; }
+  .status p { display: inline; }
+
+  footer { margin-top: 64px; text-align: center; font-size: 11px; color: var(--muted); letter-spacing: .05em; }
+</style>
+</head>
+<body>
+
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+
+<!-- LOCK SCREEN -->
+<div id="lockScreen">
+  <div class="lock-card">
+    <span class="lock-icon">🔐</span>
+    <div class="lock-title">Team Access</div>
+    <p class="lock-sub">Enter the team password to continue.</p>
+
+    <label class="lock-label" for="pwInput">Password</label>
+    <div class="pw-wrap">
+      <input type="password" id="pwInput" placeholder="••••••••••" autocomplete="off" />
+      <button class="eye-btn" onclick="toggleEye()" aria-label="Toggle password visibility">
+        <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="lock-error" id="lockError"></div>
+
+    <div class="attempts-bar" id="attemptsBar">
+      <div class="attempt-dot" id="dot0"></div>
+      <div class="attempt-dot" id="dot1"></div>
+      <div class="attempt-dot" id="dot2"></div>
+      <div class="attempt-dot" id="dot3"></div>
+      <div class="attempt-dot" id="dot4"></div>
+    </div>
+
+    <button class="lock-btn" id="lockBtn" onclick="tryUnlock()">Unlock →</button>
+    <p class="lock-hint">Ask your team lead for the password.</p>
+  </div>
+</div>
+
+<!-- TOP BAR -->
+<div class="topbar" id="topbar">
+  <span class="session-badge">Session active · <span>8h</span></span>
+  <button class="logout-btn" onclick="logout()">🔒 Lock</button>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div class="wrapper">
+
+    <header>
+      <div class="eyebrow">SEO Intelligence</div>
+      <h1>Content<br/><span>Opportunity</span><br/>Analyser</h1>
+      <p class="subtitle">Paste competitor URLs, confirm the intent &amp; page type, and we'll deliver a full strategic blueprint to your inbox.</p>
+    </header>
+
+    <div class="card">
+
+      <div class="url-area">
+        <div class="section-label">Competitor URLs</div>
+        <textarea id="urls"
+          placeholder="https://competitor-one.com/article&#10;https://competitor-two.com/guide&#10;https://competitor-three.com/review&#10;&#10;One URL per line."
+          spellcheck="false"></textarea>
+        <span class="url-count" id="urlCount">0 URLs</span>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <div class="section-label">Search Intent</div>
+          <select id="searchIntent">
+            <option value="informational">Informational</option>
+            <option value="commercial">Commercial Investigation</option>
+            <option value="transactional">Transactional</option>
+            <option value="navigational">Navigational</option>
+          </select>
+        </div>
+        <div class="field">
+          <div class="section-label">Main Page Type</div>
+          <select id="pageType">
+            <option value="article">Article / Blog Post</option>
+            <option value="listicle">Listicle</option>
+            <option value="review">Review</option>
+            <option value="comparison">Comparison Guide</option>
+            <option value="landing_page">Landing Page</option>
+            <option value="tutorial">Tutorial / How-to</option>
+            <option value="product_page">Product Page</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="email-row">
+        <div class="section-label">Deliver results to</div>
+        <input type="email" id="email" placeholder="your@email.com" />
+      </div>
+
+      <div class="divider"></div>
+
+      <button class="btn" id="submitBtn" onclick="submitForm()">
+        <span class="spinner" id="spinner"></span>
+        <span id="btnText">Run Analysis →</span>
+      </button>
+
+      <div class="status" id="status"></div>
+    </div>
+
+    <footer>INTERNAL TOOL · VIDNOZ SEO TEAM</footer>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+//  ⚙  CONFIG  — edit before deploying
+// ══════════════════════════════════════════════════
+
+// Your n8n Webhook URL
+const N8N_WEBHOOK_URL = 'YOUR_N8N_WEBHOOK_URL_HERE';
+
+// Shared team password shown on the lock screen
+// Change this to any string you like, e.g. 'vidnoz-seo-2025'
+const TEAM_PASSWORD = 'vidnoz-seo-2024';
+
+// Secret header value sent with every request to n8n
+// Must match the value you set in n8n → Webhook node → Header Auth
+// Change this to any random string, keep it private
+const WEBHOOK_SECRET = 'vnz-internal-xK7mQ2';
+
+// Session lasts 8 hours (auto-relock after tab closes — uses sessionStorage)
+const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+
+// Brute-force protection: 5 wrong attempts → 30-second cooldown
+const MAX_ATTEMPTS = 5;
+const COOLDOWN_MS  = 30_000;
+
+// ══════════════════════════════════════════════════
+//  LOCK / UNLOCK LOGIC
+// ══════════════════════════════════════════════════
+let failedAttempts = 0;
+let lockedUntil    = 0;
+
+function checkSession() {
+  const ts = sessionStorage.getItem('unlocked_at');
+  return ts && (Date.now() - parseInt(ts)) < SESSION_TTL_MS;
+}
+
+function unlock() {
+  sessionStorage.setItem('unlocked_at', Date.now().toString());
+  document.getElementById('lockScreen').classList.add('hidden');
+  document.getElementById('app').classList.add('visible');
+  document.getElementById('topbar').classList.add('visible');
+}
+
+function logout() {
+  sessionStorage.removeItem('unlocked_at');
+  document.getElementById('lockScreen').classList.remove('hidden');
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('topbar').classList.remove('visible');
+  document.getElementById('pwInput').value = '';
+  document.getElementById('lockError').textContent = '';
+  failedAttempts = 0;
+  resetDots();
+  setTimeout(() => document.getElementById('pwInput').focus(), 200);
+}
+
+function tryUnlock() {
+  const now = Date.now();
+  if (now < lockedUntil) {
+    const secs = Math.ceil((lockedUntil - now) / 1000);
+    showLockError(`Too many attempts. Try again in ${secs}s.`);
+    return;
+  }
+
+  const entered = document.getElementById('pwInput').value;
+
+  if (entered === TEAM_PASSWORD) {
+    failedAttempts = 0;
+    resetDots();
+    unlock();
+  } else {
+    failedAttempts++;
+    markDot(failedAttempts - 1);
+
+    if (failedAttempts >= MAX_ATTEMPTS) {
+      lockedUntil = now + COOLDOWN_MS;
+      failedAttempts = 0;
+      startCooldown();
+    } else {
+      const left = MAX_ATTEMPTS - failedAttempts;
+      showLockError(`Incorrect password. ${left} attempt${left !== 1 ? 's' : ''} remaining.`);
+      const inp = document.getElementById('pwInput');
+      inp.classList.add('shake');
+      setTimeout(() => inp.classList.remove('shake'), 450);
+    }
+
+    document.getElementById('pwInput').value = '';
+    document.getElementById('pwInput').focus();
+  }
+}
+
+function startCooldown() {
+  const btn = document.getElementById('lockBtn');
+  btn.classList.add('cooldown');
+  btn.disabled = true;
+
+  const tick = () => {
+    const rem = Math.ceil((lockedUntil - Date.now()) / 1000);
+    if (rem <= 0) {
+      btn.textContent = 'Unlock →';
+      btn.classList.remove('cooldown');
+      btn.disabled = false;
+      showLockError('');
+      resetDots();
+    } else {
+      btn.textContent = `Wait ${rem}s`;
+      showLockError(`Too many attempts. Try again in ${rem}s.`);
+      setTimeout(tick, 1000);
+    }
+  };
+  tick();
+}
+
+function showLockError(msg) { document.getElementById('lockError').textContent = msg; }
+function markDot(i) { document.getElementById(`dot${i}`)?.classList.add('used'); }
+function resetDots() { for (let i = 0; i < 5; i++) document.getElementById(`dot${i}`)?.classList.remove('used'); }
+
+function toggleEye() {
+  const inp  = document.getElementById('pwInput');
+  const icon = document.getElementById('eyeIcon');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    icon.innerHTML = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>`;
+  } else {
+    inp.type = 'password';
+    icon.innerHTML = `<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>`;
+  }
+}
+
+document.getElementById('pwInput').addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (checkSession()) { unlock(); }
+  else { setTimeout(() => document.getElementById('pwInput').focus(), 100); }
+});
+
+// ══════════════════════════════════════════════════
+//  MAIN FORM
+// ══════════════════════════════════════════════════
+document.getElementById('urls').addEventListener('input', () => {
+  const n = document.getElementById('urls').value
+    .split(/[\n\r,\s]+/).map(s => s.trim())
+    .filter(s => /^https?:\/\//i.test(s)).length;
+  document.getElementById('urlCount').textContent = `${n} URL${n !== 1 ? 's' : ''}`;
+});
+
+async function submitForm() {
+  const urls         = document.getElementById('urls').value.trim();
+  const searchIntent = document.getElementById('searchIntent').value;
+  const pageType     = document.getElementById('pageType').value;
+  const email        = document.getElementById('email').value.trim();
+
+  const validUrls = urls.split(/[\n\r,\s]+/).map(s => s.trim()).filter(s => /^https?:\/\//i.test(s));
+
+  if (!validUrls.length)       return showStatus('error', '⚠', 'Please enter at least one valid URL (starting with https://).');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showStatus('error', '⚠', 'Please enter a valid email address.');
+
+  setLoading(true);
+  hideStatus();
+
+  try {
+    const res = await fetch(N8N_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'X-Team-Secret': WEBHOOK_SECRET     // n8n checks this header
+      },
+      body: JSON.stringify({ urls: validUrls.join('\n'), search_intent: searchIntent, page_type: pageType, email })
+    });
+
+    if (!res.ok) throw new Error(`n8n responded with status ${res.status}`);
+
+    showStatus('success', '✓',
+      `Analysis started on ${validUrls.length} URL${validUrls.length > 1 ? 's' : ''}. ` +
+      `Your Strategic Content Blueprint will arrive at <strong>${email}</strong> in a few minutes.`
+    );
+
+    document.getElementById('urls').value = '';
+    document.getElementById('urlCount').textContent = '0 URLs';
+    document.getElementById('email').value = '';
+
+  } catch (err) {
+    showStatus('error', '✕', `Something went wrong: ${err.message}`);
+  } finally {
+    setLoading(false);
+  }
+}
+
+function setLoading(on) {
+  document.getElementById('submitBtn').disabled           = on;
+  document.getElementById('spinner').style.display        = on ? 'block' : 'none';
+  document.getElementById('btnText').textContent          = on ? 'Analysing…' : 'Run Analysis →';
+}
+function showStatus(type, icon, msg) {
+  const el = document.getElementById('status');
+  el.className = `status ${type}`;
+  el.innerHTML = `<span class="status-icon">${icon}</span><p>${msg}</p>`;
+  el.style.display = 'block';
+}
+function hideStatus() { document.getElementById('status').style.display = 'none'; }
+
+document.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submitForm(); });
+</script>
+</body>
+</html>
